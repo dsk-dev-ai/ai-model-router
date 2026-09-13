@@ -27,7 +27,12 @@ from ai_model_router.providers.base import Provider
 from ai_model_router.providers.google import GoogleProvider
 from ai_model_router.providers.mock import MockProvider
 from ai_model_router.providers.openai_compat import OpenAICompatProvider
-from ai_model_router.router import RouterEngine, RouterError, RouterNoMatchError
+from ai_model_router.router import (
+    RouterBlockError,
+    RouterEngine,
+    RouterError,
+    RouterNoMatchError,
+)
 from ai_model_router.storage import Storage
 
 PROVIDER_CLASSES = (
@@ -122,6 +127,8 @@ def create_app(
                 )
             return await engine.chat(payload, key_id=key_id)
         except RouterNoMatchError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RouterBlockError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except RouterError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc

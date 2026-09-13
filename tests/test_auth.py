@@ -46,7 +46,7 @@ def test_revoked_key_rejected() -> None:
 
 def test_rpm_rate_limit() -> None:
     storage = Storage()
-    plaintext, record = storage.create_key(
+    plaintext, _ = storage.create_key(
         name="bursty",
         rpm=2,
     )
@@ -60,7 +60,7 @@ def test_rpm_rate_limit() -> None:
 
 def test_rpd_daily_quota() -> None:
     storage = Storage()
-    plaintext, record = storage.create_key(
+    plaintext, _ = storage.create_key(
         name="daily",
         rpd=1,
     )

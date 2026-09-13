@@ -63,7 +63,9 @@ async def test_cache_disabled_per_request() -> None:
     engine = _engine()
     spec = RouterSpec(cache_enabled=False)
     first = await engine.chat(ChatRequest(messages=[{"role": "user", "content": "x"}], router=spec))
-    second = await engine.chat(ChatRequest(messages=[{"role": "user", "content": "x"}], router=spec))
+    second = await engine.chat(
+        ChatRequest(messages=[{"role": "user", "content": "x"}], router=spec)
+    )
     assert second.route.router_reason != "semantic cache hit"
     assert first.route.router_reason != "semantic cache hit"
 
@@ -85,12 +87,22 @@ async def test_cache_payload_round_trip() -> None:
 
 async def test_measured_latency_reorders_candidates() -> None:
     slow = Model(
-        id="mock/slow", provider="mock", price_in=0, price_out=0,
-        ctx=1000, latency_hint=1, capabilities=frozenset(),
+        id="mock/slow",
+        provider="mock",
+        price_in=0,
+        price_out=0,
+        ctx=1000,
+        latency_hint=1,
+        capabilities=frozenset(),
     )
     fast = Model(
-        id="mock/fast", provider="mock", price_in=0, price_out=0,
-        ctx=1000, latency_hint=500, capabilities=frozenset(),
+        id="mock/fast",
+        provider="mock",
+        price_in=0,
+        price_out=0,
+        ctx=1000,
+        latency_hint=500,
+        capabilities=frozenset(),
     )
     storage = Storage()
     storage.add_latency_sample("mock", "mock/slow", 900)
@@ -103,6 +115,8 @@ async def test_measured_latency_reorders_candidates() -> None:
     )
     assert storage.measured_avg_ms()["mock/fast"] == 15.0
     candidates, _ = engine._resolve_candidates(
-        ChatRequest(messages=[{"role": "user", "content": "hi"}], router=RouterSpec(policy="fastest"))
+        ChatRequest(
+            messages=[{"role": "user", "content": "hi"}], router=RouterSpec(policy="fastest")
+        )
     )
     assert candidates[0].id == "mock/fast"

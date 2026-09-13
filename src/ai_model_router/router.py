@@ -12,6 +12,11 @@ from ai_model_router.cache import (
     serialize_cacheable,
 )
 from ai_model_router.catalog import MODEL_CATALOG, Model
+from ai_model_router.guardrails import (
+    messages_contain_injection,
+    redact_messages,
+    redact_text,
+)
 from ai_model_router.metrics import Metrics
 from ai_model_router.models import (
     ChatChoice,
@@ -37,6 +42,10 @@ class RouterNoMatchError(RouterError):
     """Request constraints excluded every catalog model."""
 
 
+class RouterBlockError(RouterError):
+    """Request was rejected by a guardrail."""
+
+
 class RouterEngine:
     def __init__(
         self,
@@ -59,6 +68,8 @@ class RouterEngine:
         """Route and run a non-streamed completion (checks the cache first)."""
         if not request.messages:
             raise RouterError("messages must not be empty")
+
+        self._apply_guardrails(request)
 
         cached = await self._try_cache_hit(request, key_id)
         if cached is not None:
@@ -143,6 +154,8 @@ class RouterEngine:
                         completion_tokens=usage.completion_tokens,
                     ),
                 )
+            if spec.redact_pii:
+                self._redact_response_content(response)
             return response
 
         raise RouterError(f"all {attempts} candidate(s) failed: {last_error}")
@@ -153,6 +166,14 @@ class RouterEngine:
         key_id: int | None = None,
     ) -> AsyncIterator[bytes]:
         """Route and stream SSE bytes; falls back across candidates."""
+        if not request.messages:
+            yield f"data: {self._no_match_message(request)}\n\n".encode()
+            return
+        try:
+            self._apply_guardrails(request)
+        except RouterBlockError as exc:
+            yield f"data: [ROUTER_BLOCKED] {exc}\n\n".encode()
+            return
         candidates, requested = self._resolve_candidates(request)
         if not candidates:
             yield f"data: {self._no_match_message(request)}\n\n".encode()
@@ -206,6 +227,20 @@ class RouterEngine:
         yield f"data: [ROUTER_ERROR] {last_error}\n\n".encode()
 
     # -- internals ----------------------------------------------------------
+
+    def _apply_guardrails(self, request: ChatRequest) -> None:
+        spec = request.router
+        if spec.block_injection and messages_contain_injection(request.messages):
+            raise RouterBlockError(
+                "request blocked: potential prompt-injection attempt detected"
+            )
+        if spec.redact_pii:
+            request.messages = redact_messages(request.messages)
+
+    def _redact_response_content(self, response: ChatResponse) -> None:
+        for choice in response.choices:
+            if choice.message.content:
+                choice.message.content = redact_text(choice.message.content)
 
     async def _try_cache_hit(
         self, request: ChatRequest, key_id: int | None

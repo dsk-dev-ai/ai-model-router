@@ -21,6 +21,8 @@ class RouterSpec(BaseModel):
     priority: list[str] = Field(default_factory=list)
     fallback: bool = True
     cache_enabled: bool = True
+    redact_pii: bool = False
+    block_injection: bool = False
 
 
 class ChatRequest(BaseModel):
