@@ -13,6 +13,8 @@ base URL to this service):
 
 from __future__ import annotations
 
+import logging
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -57,6 +59,9 @@ def build_providers() -> dict[str, Provider]:
     return providers
 
 
+request_logger = logging.getLogger("ai_model_router.access")
+
+
 def create_app(
     engine: RouterEngine | None = None,
     settings: Settings | None = None,
@@ -84,6 +89,21 @@ def create_app(
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    @app.middleware("http")
+    async def access_log_middleware(request: Request, call_next: Any) -> Any:
+        started = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        request_logger.info(
+            "method=%s path=%s status=%s duration_ms=%s",
+            request.method,
+            request.url.path,
+            getattr(response, "status_code", "?"),
+            elapsed_ms,
+        )
+        return response
+
     app.state.settings = settings
     app.state.storage = storage
     app.state.engine = engine or RouterEngine(providers=build_providers(), storage=storage)
@@ -152,6 +172,18 @@ def create_app(
         if model is None:
             raise HTTPException(status_code=404, detail=f"unknown model '{model_id}'")
         return model.to_dict()
+
+    @app.get("/v1/admin/health")
+    async def admin_health() -> dict[str, Any]:
+        engine: RouterEngine = app.state.engine
+        return {
+            "status": "ok",
+            "providers": {
+                name: "configured" for name in sorted(engine.providers)
+            },
+            "storage": "sqlite" if storage is not None else "none",
+            "keys_enabled": storage is not None and bool(storage.list_keys()),
+        }
 
     @app.get("/v1/usage")
     async def usage() -> dict[str, Any]:
