@@ -231,9 +231,7 @@ class RouterEngine:
     def _apply_guardrails(self, request: ChatRequest) -> None:
         spec = request.router
         if spec.block_injection and messages_contain_injection(request.messages):
-            raise RouterBlockError(
-                "request blocked: potential prompt-injection attempt detected"
-            )
+            raise RouterBlockError("request blocked: potential prompt-injection attempt detected")
         if spec.redact_pii:
             request.messages = redact_messages(request.messages)
 
@@ -242,9 +240,7 @@ class RouterEngine:
             if choice.message.content:
                 choice.message.content = redact_text(choice.message.content)
 
-    async def _try_cache_hit(
-        self, request: ChatRequest, key_id: int | None
-    ) -> ChatResponse | None:
+    async def _try_cache_hit(self, request: ChatRequest, key_id: int | None) -> ChatResponse | None:
         """Return a cached response, or None to route normally."""
         if self.storage is None or not request.router.cache_enabled:
             return None

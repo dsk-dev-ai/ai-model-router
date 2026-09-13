@@ -86,7 +86,7 @@ def create_app(
             "OpenAI-compatible LLM gateway: route to best/cheapest/fastest model, "
             "automatic fallback on failure, and per-request cost + latency tracking."
         ),
-        version="0.1.0",
+        version="1.0.0",
         lifespan=lifespan,
     )
 
@@ -178,9 +178,7 @@ def create_app(
         engine: RouterEngine = app.state.engine
         return {
             "status": "ok",
-            "providers": {
-                name: "configured" for name in sorted(engine.providers)
-            },
+            "providers": {name: "configured" for name in sorted(engine.providers)},
             "storage": "sqlite" if storage is not None else "none",
             "keys_enabled": storage is not None and bool(storage.list_keys()),
         }

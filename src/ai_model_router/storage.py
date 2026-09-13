@@ -323,9 +323,7 @@ class Storage:
     def measured_avg_ms(self) -> dict[str, float]:
         """Map model -> average measured latency (empty when no telemetry)."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT model, calls, total_ms FROM latency"
-            ).fetchall()
+            rows = self._conn.execute("SELECT model, calls, total_ms FROM latency").fetchall()
         result: dict[str, float] = {}
         for row in rows:
             if row["calls"] > 0:

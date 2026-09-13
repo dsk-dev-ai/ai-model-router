@@ -36,7 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_key = sub.add_parser("create-key", parents=[common], help="create a tenant API key")
     p_key.add_argument("--name", required=True, help="label for the key")
     p_key.add_argument(
-        "--tier", default="free",
+        "--tier",
+        default="free",
         choices=("free", "developer", "pro", "business"),
         help="rate-limit tier (default: free)",
     )
@@ -126,9 +127,7 @@ def cmd_list_keys(args: argparse.Namespace) -> int:
         status = "enabled" if row.enabled else "revoked"
         if not row.enabled and not args.all:
             continue
-        print(
-            f"{row.id}\t{status}\t{row.tier}\t{row.prefix}...\t{row.name}"
-        )
+        print(f"{row.id}\t{status}\t{row.tier}\t{row.prefix}...\t{row.name}")
     return 0
 
 

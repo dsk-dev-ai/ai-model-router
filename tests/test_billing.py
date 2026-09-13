@@ -43,12 +43,8 @@ def _post(app, body: dict, *, signed: bool = True, secret: str = SECRET) -> obje
     raw = json.dumps(body).encode()
     headers = {}
     if signed:
-        headers["x-signature"] = hmac.new(
-            secret.encode(), raw, hashlib.sha256
-        ).hexdigest()
-    return TestClient(app).post(
-        "/webhooks/lemon", content=raw, headers=headers
-    )
+        headers["x-signature"] = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+    return TestClient(app).post("/webhooks/lemon", content=raw, headers=headers)
 
 
 def test_verify_signature() -> None:

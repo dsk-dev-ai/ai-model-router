@@ -54,8 +54,6 @@ def test_admin_health_requires_auth_when_admin_key_set() -> None:
     with TestClient(app) as c:
         assert c.get("/v1/admin/health").status_code == 401
         assert (
-            c.get(
-                "/v1/admin/health", headers={"Authorization": "Bearer admin-1"}
-            ).status_code
+            c.get("/v1/admin/health", headers={"Authorization": "Bearer admin-1"}).status_code
             == 200
         )
