@@ -19,6 +19,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from ai_model_router.auth import make_auth_middleware
 from ai_model_router.config import Settings
 from ai_model_router.models import ChatRequest, ChatResponse
 from ai_model_router.providers.anthropic import AnthropicProvider
@@ -27,6 +28,7 @@ from ai_model_router.providers.google import GoogleProvider
 from ai_model_router.providers.mock import MockProvider
 from ai_model_router.providers.openai_compat import OpenAICompatProvider
 from ai_model_router.router import RouterEngine, RouterError, RouterNoMatchError
+from ai_model_router.storage import Storage
 
 PROVIDER_CLASSES = (
     OpenAICompatProvider,
@@ -51,14 +53,20 @@ def build_providers() -> dict[str, Provider]:
 def create_app(
     engine: RouterEngine | None = None,
     settings: Settings | None = None,
+    storage: Storage | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
+    external_storage = storage is not None
+    storage = storage or (Storage(settings.db_path) if settings.db_path else None)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.settings = settings
-        app.state.engine = engine or RouterEngine(providers=build_providers())
+        app.state.storage = storage
+        app.state.engine = engine or RouterEngine(providers=build_providers(), storage=storage)
         yield
+        if storage is not None and not external_storage:
+            storage.close()
 
     app = FastAPI(
         title="ai-model-router",
@@ -70,16 +78,14 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.settings = settings
-    app.state.engine = engine or RouterEngine(providers=build_providers())
+    app.state.storage = storage
+    app.state.engine = engine or RouterEngine(providers=build_providers(), storage=storage)
+
+    auth_handler = make_auth_middleware(storage, settings)
 
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next: Any) -> JSONResponse | Any:
-        path = request.url.path
-        if path.startswith("/v1/") and settings.api_key:
-            auth = request.headers.get("authorization", "")
-            if auth != f"Bearer {settings.api_key}":
-                return JSONResponse(status_code=401, content={"detail": "invalid API key"})
-        return await call_next(request)
+        return await auth_handler(request, call_next)
 
     @app.get("/health", include_in_schema=False)
     async def health() -> dict[str, str]:
@@ -103,15 +109,18 @@ def create_app(
         "/v1/chat/completions",
         response_model=ChatResponse,
     )
-    async def chat_completions(payload: ChatRequest) -> ChatResponse | StreamingResponse:
+    async def chat_completions(
+        payload: ChatRequest, request: Request
+    ) -> ChatResponse | StreamingResponse:
         engine: RouterEngine = app.state.engine
+        key_id: int | None = getattr(request.state, "router_key_id", None)
         try:
             if payload.stream:
                 return StreamingResponse(
-                    engine.stream(payload),
+                    engine.stream(payload, key_id=key_id),
                     media_type="text/event-stream",
                 )
-            return await engine.chat(payload)
+            return await engine.chat(payload, key_id=key_id)
         except RouterNoMatchError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except RouterError as exc:

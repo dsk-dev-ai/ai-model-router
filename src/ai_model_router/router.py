@@ -19,6 +19,7 @@ from ai_model_router.models import (
 )
 from ai_model_router.policy import rank_candidates
 from ai_model_router.providers.base import Provider, ProviderError
+from ai_model_router.storage import Storage
 
 OPENROUTER_PREFIX: Final = "openrouter:"
 
@@ -36,14 +37,20 @@ class RouterEngine:
         self,
         providers: dict[str, Provider] | None = None,
         catalog: dict[str, Model] | None = None,
+        storage: Storage | None = None,
     ) -> None:
         self.providers = providers or {}
         self.catalog = catalog or MODEL_CATALOG
+        self.storage = storage
         self.metrics = Metrics()
 
     # -- public -------------------------------------------------------------
 
-    async def chat(self, request: ChatRequest) -> ChatResponse:
+    async def chat(
+        self,
+        request: ChatRequest,
+        key_id: int | None = None,
+    ) -> ChatResponse:
         """Route and run a non-streamed completion."""
         if not request.messages:
             raise RouterError("messages must not be empty")
@@ -90,6 +97,14 @@ class RouterEngine:
                 ),
             )
             self.metrics.record(model.provider, route, usage)
+            self._persist(
+                provider_name=model.provider,
+                model_id=model.id,
+                usage=usage,
+                latency_ms=elapsed_ms,
+                key_id=key_id,
+                cached=False,
+            )
             response = new_response(model=model.id)
             response.choices = [
                 ChatChoice(
@@ -111,7 +126,11 @@ class RouterEngine:
 
         raise RouterError(f"all {attempts} candidate(s) failed: {last_error}")
 
-    async def stream(self, request: ChatRequest) -> AsyncIterator[bytes]:
+    async def stream(
+        self,
+        request: ChatRequest,
+        key_id: int | None = None,
+    ) -> AsyncIterator[bytes]:
         """Route and stream SSE bytes; falls back across candidates."""
         candidates, requested = self._resolve_candidates(request)
         if not candidates:
@@ -144,6 +163,14 @@ class RouterEngine:
                     ),
                     Usage(),
                 )
+                self._persist(
+                    provider_name=model.provider,
+                    model_id=model.id,
+                    usage=Usage(),
+                    latency_ms=self._ms(started),
+                    key_id=key_id,
+                    cached=False,
+                )
                 return
             except ProviderError as exc:
                 last_error = str(exc)
@@ -158,6 +185,31 @@ class RouterEngine:
         yield f"data: [ROUTER_ERROR] {last_error}\n\n".encode()
 
     # -- internals ----------------------------------------------------------
+
+    def _persist(
+        self,
+        *,
+        provider_name: str,
+        model_id: str,
+        usage: Usage,
+        latency_ms: int,
+        key_id: int | None,
+        cached: bool,
+    ) -> None:
+        """Persist a latency sample + usage record when storage is enabled."""
+        if self.storage is None:
+            return
+        self.storage.add_latency_sample(provider_name, model_id, latency_ms)
+        self.storage.record_usage(
+            provider=provider_name,
+            model=model_id,
+            prompt_tokens=int(usage.prompt_tokens),
+            completion_tokens=int(usage.completion_tokens),
+            cost_usd=float(usage.estimated_cost_usd or 0.0),
+            latency_ms=latency_ms,
+            cached=cached,
+            key_id=key_id,
+        )
 
     def _resolve_candidates(self, request: ChatRequest) -> tuple[list[Model], str]:
         spec = request.router

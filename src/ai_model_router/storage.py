@@ -40,6 +40,12 @@ CREATE TABLE IF NOT EXISTS usage (
     cached            INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS usage_key_ts ON usage (key_id, ts);
+CREATE TABLE IF NOT EXISTS requests (
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts   TEXT NOT NULL,
+    key_id INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS requests_key_ts ON requests (key_id, ts);
 CREATE TABLE IF NOT EXISTS latency (
     provider TEXT NOT NULL,
     model    TEXT NOT NULL,
@@ -245,6 +251,21 @@ class Storage:
         with self._lock:
             row = self._conn.execute(
                 "SELECT COUNT(*) AS n FROM usage WHERE key_id = ? AND ts LIKE ?",
+                (key_id, f"{day}%"),
+            ).fetchone()
+        return int(row["n"])
+
+    def record_request(self, key_id: int) -> None:
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        with self._lock:
+            self._conn.execute("INSERT INTO requests (ts, key_id) VALUES (?, ?)", (now, key_id))
+            self._conn.commit()
+
+    def requests_today(self, key_id: int) -> int:
+        day = time.strftime("%Y-%m-%d", time.gmtime())
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS n FROM requests WHERE key_id = ? AND ts LIKE ?",
                 (key_id, f"{day}%"),
             ).fetchone()
         return int(row["n"])
