@@ -173,8 +173,8 @@ upgrade the key's tier; cancellation/expiry downgrade it to `free`.
 The repo ships `Dockerfile` (non-root + healthcheck), `fly.toml`
 (Fly.io + persistent disk), and `render.yaml` (Render blueprint). Deploy docs:
 [docs/deploy.md](docs/deploy.md). Container images are published to
-`ghcr.io/dsk-dev-ai/ai-model-router` and the Python package to PyPI on tagged
-releases.
+`ghcr.io/dsk-dev-ai/ai-model-router` and the Python package
+`pip install ai-model-router-gateway` on tagged releases.
 
 ## Docs
 
