@@ -1,0 +1,46 @@
+# Launch config for Fly.io — one instance + a persistent SQLite volume.
+app = "ai-model-router"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ROUTER_HOST = "0.0.0.0"
+  ROUTER_PORT = "8000"
+  ROUTER_DB = "/data/router.db"
+  # Provider keys and ROUTER_API_KEY go in `fly secrets set`.
+
+[experimental]
+  auto_rollback = true
+
+[[mounts]]
+  source = "data"
+  destination = "/data"
+
+[[services]]
+  internal_port = 8000
+  protocol = "tcp"
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 50
+
+  [[services.http_checks]]
+    grace_period = "10s"
+    interval = "30s"
+    timeout = "3s"
+    path = "/health"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    grace_period = "10s"
+    interval = "30s"
+    timeout = "3s"
