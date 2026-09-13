@@ -53,4 +53,4 @@ jobs:
       - name: Build sdist + wheel
         run: uv build
       - name: Validate distributions
-        run: uv run twine check dist/*
+        run: uvx twine check dist/*
