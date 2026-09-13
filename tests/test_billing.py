@@ -92,7 +92,9 @@ def test_downgrade_event_returns_to_free() -> None:
     storage = Storage()
     _, key = storage.create_key(name="churner", tier="business")
     outcome = apply_webhook_event(
-        storage, "subscription_cancelled", _attrs(_webhook_payload("subscription_cancelled", key.id))
+        storage,
+        "subscription_cancelled",
+        _attrs(_webhook_payload("subscription_cancelled", key.id)),
     )
     assert outcome["handled"]
     assert outcome["action"] == "downgrade"
