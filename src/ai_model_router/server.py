@@ -3,11 +3,12 @@
 Endpoints (all OpenAI-shaped so existing SDK clients work by swapping the
 base URL to this service):
 
-- ``POST /v1/chat/completions``   routed chat; supports ``stream: true``
-- ``GET  /v1/models``             catalog overview
-- ``GET  /v1/models/{id}``        single model details
-- ``GET  /v1/usage``              in-memory spend / latency snapshot
-- ``GET  /health``                liveness
+- ``POST /v1/chat/completions``    routed chat; supports ``stream: true``
+- ``GET  /v1/models``              catalog overview
+- ``GET  /v1/models/{id}``         single model details
+- ``GET  /v1/usage``               persisted spend / latency snapshot
+- ``POST /webhooks/lemon``         Lemon Squeezy billing webhook
+- ``GET  /health``                 liveness
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from ai_model_router.auth import make_auth_middleware
+from ai_model_router.billing import apply_webhook_event, parse_webhook, verify_signature
 from ai_model_router.config import Settings
 from ai_model_router.models import ChatRequest, ChatResponse
 from ai_model_router.providers.anthropic import AnthropicProvider
@@ -157,10 +159,40 @@ def create_app(
         snapshot = engine.metrics.snapshot()
         total_cost = round(sum(float(s["cost_usd"]) for s in snapshot.values()), 6)
         total_calls = sum(int(s["calls"]) for s in snapshot.values())
-        return {
+        result: dict[str, Any] = {
             "total_calls": total_calls,
             "total_cost_usd": total_cost,
             "providers": snapshot,
         }
+        if storage is not None:
+            summary = storage.usage_summary()
+            result["persisted"] = {
+                "calls": summary["calls"],
+                "cost_usd": round(summary["cost"], 6),
+                "prompt_tokens": summary["prompt_tokens"],
+                "completion_tokens": summary["completion_tokens"],
+                "cache_hits": summary["cached"],
+            }
+            result["latency_avg_ms"] = storage.latency_stats()
+        return result
+
+    @app.post("/webhooks/lemon")
+    async def lemon_squeezy_webhook(request: Request) -> JSONResponse:
+        if storage is None:
+            return JSONResponse(
+                status_code=422,
+                content={"handled": False, "reason": "storage not configured"},
+            )
+        raw = await request.body()
+        signature = request.headers.get("x-signature", "")
+        if not verify_signature(settings.lemon_webhook_secret, raw, signature):
+            return JSONResponse(
+                status_code=401,
+                content={"handled": False, "reason": "invalid signature"},
+            )
+        event_name, event_data = parse_webhook(raw)
+        outcome = apply_webhook_event(storage, event_name, event_data)
+        status = 200 if outcome["handled"] else 422
+        return JSONResponse(status_code=status, content=outcome)
 
     return app
