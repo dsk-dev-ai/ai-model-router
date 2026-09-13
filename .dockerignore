@@ -7,6 +7,8 @@ __pycache__
 .pytest_cache
 dist
 build
+.git
+*.db
+*.sqlite
 .env
 .env.*
-!.env.example

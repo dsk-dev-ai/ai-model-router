@@ -1,0 +1,24 @@
+# Render blueprint: one web service with a persistent disk for SQLite.
+services:
+  - type: web
+    name: ai-model-router
+    runtime: docker
+    repo: https://github.com/dsk-dev-ai/ai-model-router
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ROUTER_DB
+        sync: false
+        value: /data/router.db
+      - key: ROUTER_API_KEY
+        sync: false
+      - key: LEMON_WEBHOOK_SECRET
+        sync: false
+      # Provider API keys (uncomment as needed):
+      # - key: OPENAI_API_KEY
+      #   sync: false
+    disk:
+      name: router-data
+      sizeGB: 1
+      mountPath: /data
+    healthCheckPath: /health
