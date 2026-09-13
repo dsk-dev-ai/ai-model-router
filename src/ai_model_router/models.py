@@ -20,6 +20,7 @@ class RouterSpec(BaseModel):
     max_cost_usd: float | None = None
     priority: list[str] = Field(default_factory=list)
     fallback: bool = True
+    cache_enabled: bool = True
 
 
 class ChatRequest(BaseModel):

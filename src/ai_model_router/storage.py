@@ -320,6 +320,18 @@ class Storage:
         calls = sum(r["calls"] for r in rows)
         return total_ms / calls if calls else None
 
+    def measured_avg_ms(self) -> dict[str, float]:
+        """Map model -> average measured latency (empty when no telemetry)."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT model, calls, total_ms FROM latency"
+            ).fetchall()
+        result: dict[str, float] = {}
+        for row in rows:
+            if row["calls"] > 0:
+                result[row["model"]] = row["total_ms"] / row["calls"]
+        return result
+
     # -- semantic cache -----------------------------------------------------
 
     def cache_get(self, key: str) -> str | None:
