@@ -122,6 +122,8 @@ recorded in usage as a cache hit.
 | `GET /v1/usage` | Persisted spend, calls, cache hits, and avg latency per model. |
 | `GET /v1/admin/health` | Provider + storage status (auth required). |
 | `POST /webhooks/lemon` | Lemon Squeezy subscription webhook (see below). |
+| `POST /signup` | Mint a free-tier API key (rate-limited per IP). |
+| `GET /pricing`, `/` | Marketing landing page + tier prices. |
 | `/health`, `/` | Liveness and endpoint summary. Interactive docs at `/docs`. |
 
 Every response includes a `route` block:

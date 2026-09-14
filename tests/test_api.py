@@ -31,8 +31,15 @@ def test_health(client: TestClient) -> None:
     assert response.json()["status"] == "ok"
 
 
-def test_root_lists_endpoints(client: TestClient) -> None:
+def test_root_serves_landing_page(client: TestClient) -> None:
     response = client.get("/")
+    assert response.status_code == 200
+    assert "ai-model-router" in response.text
+    assert "Simple pricing" in response.text
+
+
+def test_api_summary_lists_endpoints(client: TestClient) -> None:
+    response = client.get("/api")
     assert response.status_code == 200
     assert "/v1/chat/completions" in response.json()["endpoints"]
 

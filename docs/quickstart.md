@@ -11,6 +11,17 @@ cd ai-model-router
 uv sync --group dev
 ```
 
+## 1b. Or try the land-page signup (instant free key)
+
+Start the server, then:
+
+```sh
+curl -X POST http://localhost:8000/signup
+# -> {"key_id":1,"api_key":"amr_live_...","tier":"free","rpm":30,"rpd":500}
+```
+
+One key per IP per minute (`429` otherwise).
+
 ## 2. Create a database and an API key
 
 ```sh

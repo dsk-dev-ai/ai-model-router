@@ -20,12 +20,14 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
-from ai_model_router.auth import make_auth_middleware
+from ai_model_router.auth import RateLimiter, make_auth_middleware
 from ai_model_router.billing import apply_webhook_event, parse_webhook, verify_signature
 from ai_model_router.config import Settings
+from ai_model_router.landing import LANDING_HTML
 from ai_model_router.models import ChatRequest, ChatResponse
+from ai_model_router.pricing import SignupResult, tiers_json
 from ai_model_router.providers.anthropic import AnthropicProvider
 from ai_model_router.providers.base import Provider
 from ai_model_router.providers.google import GoogleProvider
@@ -61,6 +63,8 @@ def build_providers() -> dict[str, Provider]:
 
 request_logger = logging.getLogger("ai_model_router.access")
 
+SIGNUP_RPM = 1
+
 
 def create_app(
     engine: RouterEngine | None = None,
@@ -70,6 +74,7 @@ def create_app(
     settings = settings or Settings.from_env()
     external_storage = storage is not None
     storage = storage or (Storage(settings.db_path) if settings.db_path else None)
+    signup_limiter = RateLimiter()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -118,8 +123,12 @@ def create_app(
     async def health() -> dict[str, str]:
         return {"status": "ok", "service": "ai-model-router"}
 
-    @app.get("/")
-    async def root() -> dict[str, object]:
+    @app.get("/", include_in_schema=False)
+    async def landing() -> HTMLResponse:
+        return HTMLResponse(LANDING_HTML)
+
+    @app.get("/api", include_in_schema=False)
+    async def api_summary() -> dict[str, object]:
         return {
             "service": "ai-model-router",
             "docs": "/docs",
@@ -128,9 +137,42 @@ def create_app(
                 "/v1/chat/completions",
                 "/v1/models",
                 "/v1/usage",
+                "/v1/admin/health",
+                "/signup",
+                "/pricing",
+                "/webhooks/lemon",
                 "/health",
             ],
         }
+
+    @app.get("/pricing", include_in_schema=False)
+    async def pricing() -> dict[str, object]:
+        return tiers_json()
+
+    @app.post("/signup", include_in_schema=False, response_model=None)
+    async def signup(request: Request) -> JSONResponse:
+        if storage is None:
+            return JSONResponse(status_code=422, content={"detail": "storage not configured"})
+        forwarded = request.headers.get("x-forwarded-for", "")
+        client_ip = forwarded.split(",")[0].strip() or (
+            request.client.host if request.client else "unknown"
+        )
+        if not signup_limiter.allow(client_ip, SIGNUP_RPM):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "slow down — one free key per minute"},
+            )
+        plaintext, record = storage.create_key(name=f"signup:{client_ip}")
+        return JSONResponse(
+            status_code=200,
+            content=SignupResult(
+                key_id=record.id,
+                api_key=plaintext,
+                tier=record.tier,
+                rpm=record.rpm,
+                rpd=record.rpd,
+            ).to_dict(),
+        )
 
     @app.post(
         "/v1/chat/completions",

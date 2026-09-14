@@ -37,13 +37,13 @@ def _token(authorization: str) -> str:
 
 @dataclass
 class RateLimiter:
-    """Per-key sliding-window request throttling (in-memory)."""
+    """Sliding-window request throttling (in-memory), keyed by id or IP."""
 
-    _windows: dict[int, deque[float]] = field(default_factory=lambda: defaultdict(deque))
+    _windows: dict[int | str, deque[float]] = field(default_factory=lambda: defaultdict(deque))
 
-    def allow(self, key_id: int, rpm: int, now: float | None = None) -> bool:
+    def allow(self, key: int | str, rpm: int, now: float | None = None) -> bool:
         now = now or time.monotonic()
-        window = self._windows[key_id]
+        window = self._windows[key]
         while window and now - window[0] > 60.0:
             window.popleft()
         if len(window) >= max(int(rpm), 1):

@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "ai-model-router"
+name = "ai-model-router-gateway"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
