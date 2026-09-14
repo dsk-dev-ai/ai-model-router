@@ -1,6 +1,6 @@
 [project]
 name = "ai-model-router-gateway"
-version = "1.0.0"
+version = "1.0.1"
 description = "OpenAI-compatible API gateway that routes each request to the best, cheapest, or fastest LLM across providers, with automatic fallback, semantic cache, guardrails, and per-request cost tracking."
 readme = "README.md"
 requires-python = ">=3.10"

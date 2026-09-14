@@ -9,7 +9,7 @@ from ai_model_router.models import (
     Usage,
 )
 
-__version__ = "0.1.0"
+__version__ = "1.0.1"
 __all__ = [
     "MODEL_CATALOG",
     "ChatRequest",
