@@ -149,6 +149,7 @@ def create_app(
     async def pricing() -> dict[str, object]:
         return tiers_json()
 
+    @app.get("/signup", include_in_schema=False, response_model=None)
     @app.post("/signup", include_in_schema=False, response_model=None)
     async def signup(request: Request) -> JSONResponse:
         if storage is None:

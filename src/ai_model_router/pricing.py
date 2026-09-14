@@ -15,6 +15,7 @@ TIERS: dict[str, dict[str, Any]] = {
         "price_usd": 0,
         "rpm": 30,
         "rpd": 500,
+        "status": "available",
         "features": [
             "Routing across all providers",
             "30 requests/min, 500/day",
@@ -27,6 +28,7 @@ TIERS: dict[str, dict[str, Any]] = {
         "price_usd": 19,
         "rpm": 60,
         "rpd": 5_000,
+        "status": "coming_soon",
         "features": [
             "Everything in Free",
             "5,000 requests/day",
@@ -39,6 +41,7 @@ TIERS: dict[str, dict[str, Any]] = {
         "price_usd": 79,
         "rpm": 300,
         "rpd": 50_000,
+        "status": "coming_soon",
         "features": [
             "Everything in Developer",
             "50,000 requests/day",
@@ -51,6 +54,7 @@ TIERS: dict[str, dict[str, Any]] = {
         "price_usd": 299,
         "rpm": 1_000,
         "rpd": 500_000,
+        "status": "coming_soon",
         "features": [
             "Everything in Pro",
             "500,000 requests/day",

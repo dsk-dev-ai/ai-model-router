@@ -28,6 +28,10 @@ def test_pricing_lists_all_tiers() -> None:
         body = resp.json()
         assert set(body["tiers"]) == {"free", "developer", "pro", "business"}
         assert body["tiers"]["free"]["price_usd"] == 0
+        assert body["tiers"]["free"]["status"] == "available"
+        assert all(
+            body["tiers"][k]["status"] == "coming_soon" for k in ("developer", "pro", "business")
+        )
 
 
 def test_signup_returns_one_time_key() -> None:
@@ -38,6 +42,13 @@ def test_signup_returns_one_time_key() -> None:
         assert body["api_key"].startswith("amr_live_")
         assert body["tier"] == "free"
         assert body["rpm"] == 30
+
+
+def test_signup_get_also_works() -> None:
+    with _app() as c:
+        resp = c.get("/signup", headers={"X-Forwarded-For": "203.0.113.10"})
+        assert resp.status_code == 200
+        assert resp.json()["api_key"].startswith("amr_live_")
 
 
 def test_signup_rate_limited_per_ip() -> None:

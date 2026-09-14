@@ -13,13 +13,17 @@ def _tier_cards() -> str:
         price = int(tier["price_usd"])
         price_html = f"${price}" if price else "Free"
         features = "".join(f"<li>{f}</li>" for f in tier["features"])
+        tag = '<span class="soon">coming soon</span>' if tier["status"] == "coming_soon" else ""
+        action = (
+            '<a class="btn" href="/signup">Get a free key</a>'
+            if tier["status"] == "available"
+            else '<span class="btn disabled">Coming soon</span>'
+        )
         popular = ' class="card popular"' if key == "pro" else ""
         cards.append(
-            f"<div{popular}><h3>{tier['name']}</h3>"
+            f"<div{popular}><h3>{tier['name']}{tag}</h3>"
             f'<p class="price">{price_html}<span>/mo</span></p>'
-            f"<ul>{features}</ul>"
-            '<a class="btn" href="https://lemon-squeezy.placeholder/" '
-            f'data-plan="{key}">Choose {tier["name"]}</a></div>'
+            f"<ul>{features}</ul>{action}</div>"
         )
     return "".join(cards)
 
@@ -46,6 +50,7 @@ LANDING_HTML = f"""<!DOCTYPE html>
   .btn {{ display: inline-block; padding: 13px 26px; border-radius: 10px;
           text-decoration: none; font-weight: 600; background: #5b8cff; color: #fff; }}
   .btn.ghost {{ background: transparent; border: 1px solid #3d4366; color: #e6e6ff; }}
+  .btn.disabled {{ background: #1a2133; color: #6a7190; cursor: default; }}
   code {{ background: #151b2b; border: 1px solid #242b45; border-radius: 6px;
          padding: 2px 6px; font-size: 0.9em; color: #ffd479; }}
   .feature {{ padding: 48px 0; }}
@@ -63,6 +68,8 @@ LANDING_HTML = f"""<!DOCTYPE html>
           padding: 24px; display: flex; flex-direction: column; gap: 14px; }}
   .card.popular {{ border-color: #5b8cff; }}
   .card h3 {{ font-size: 18px; }}
+  .card .soon {{ display: block; font-size: 11px; text-transform: uppercase;
+                 letter-spacing: .06em; color: #6a7190; margin-top: 4px; }}
   .card .price {{ font-size: 30px; font-weight: 700; color: #8ee6a3; }}
   .card .price span {{ font-size: 14px; color: #a9b3d1; font-weight: 400; }}
   .card ul {{ list-style: none; font-size: 14px; color: #a9b3d1; }}
