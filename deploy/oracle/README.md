@@ -49,11 +49,11 @@ systemd unit that survives reboots, and applies secrets on every start.
 
 ## Images
 
-Pulls `ghcr.io/dsk-dev-ai/ai-model-router:<VERSION>` (default `latest` tag =
-latest release). To upgrade:
+Pulls `ghcr.io/dsk-dev-ai/ai-model-router:<VERSION>` (default `1.0.1`; the
+`latest` tag is pushed from v1.0.2 onward). To upgrade:
 
 ```bash
-ssh ubuntu@$IP "bash oracle/bootstrap.sh"   # re-pulls + restarts
+ssh ubuntu@$IP "ROUTER_IMAGE_VERSION=1.0.2 bash oracle/bootstrap.sh"   # re-pulls + restarts
 ```
 
 ## Firewall notes

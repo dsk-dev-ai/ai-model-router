@@ -5,7 +5,7 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
-VERSION="${ROUTER_IMAGE_VERSION:-latest}"
+VERSION="${ROUTER_IMAGE_VERSION:-1.0.1}"
 IMAGE="ghcr.io/dsk-dev-ai/ai-model-router:${VERSION}"
 DATA_DIR=/srv/router/data
 ENV_FILE=/etc/ai-model-router.env
