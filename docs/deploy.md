@@ -12,13 +12,30 @@ Shared setup on every platform:
 
 ## Fly.io
 
-`fly.toml` is included and wires a 1 GB persistent volume at `/data`.
+`fly.toml` is included and wires a 1 GB persistent volume at `/data`. The
+one-liner helper is `scripts/deploy-fly.sh` (set provider keys as env vars, it
+injects them as Fly secrets).
+
+First time only (creates the app + volume):
 
 ```sh
-fly launch --no-deploy
+curl -L https://fly.io/install.sh | sh
+fly auth login
+fly launch --name ai-model-router --no-deploy
 fly volumes create data --region fra --size 1
-fly secrets set ROUTER_API_KEY=... ROUTER_DB=/data/router.db \
-  OPENAI_API_KEY=...
+```
+
+Then each release:
+
+```sh
+export ROUTER_API_KEY=... OPENAI_API_KEY=...   # etc.
+bash scripts/deploy-fly.sh
+```
+
+Alternatively, set secrets by hand:
+
+```sh
+fly secrets set ROUTER_API_KEY=... ROUTER_DB=/data/router.db OPENAI_API_KEY=...
 fly deploy
 ```
 
