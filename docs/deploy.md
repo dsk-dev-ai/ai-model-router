@@ -10,6 +10,17 @@ Shared setup on every platform:
 - Provider keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, ...) — optional.
 - `LEMON_WEBHOOK_SECRET` — optional, only if you use [billing](billing.md).
 
+## Free, no-account-cost quick start (PythonAnywhere)
+
+`deploy/pythonanywhere/` deploys the same gateway on PythonAnywhere's **free
+tier with no credit card**: persistent disk (SQLite survives), always-on web
+app, outbound HTTPS to providers allowed. See that folder's `README.md`.
+
+## Oracle Cloud Always Free
+
+`deploy/oracle/` runs the published container on a free-for-ever VM (needs a
+card for identity check only, never charged). See that folder's `README.md`.
+
 ## Fly.io
 
 `fly.toml` is included and wires a 1 GB persistent volume at `/data`. The
